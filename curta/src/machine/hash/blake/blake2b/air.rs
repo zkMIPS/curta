@@ -2,8 +2,7 @@ use log::debug;
 use plonky2::util::log2_ceil;
 
 use super::data::{BLAKE2BConstNums, BLAKE2BConsts, BLAKE2BData};
-use super::register::BLAKE2BDigestRegister;
-use super::{BLAKE2B, COMPRESS_LENGTH, IV, STATE_SIZE};
+use super::{BLAKE2BAir, COMPRESS_LENGTH, IV, STATE_SIZE};
 use crate::chip::memory::instruction::MemorySliceIndex;
 use crate::chip::memory::pointer::slice::Slice;
 use crate::chip::memory::time::Time;
@@ -13,7 +12,7 @@ use crate::chip::register::element::ElementRegister;
 use crate::chip::register::{Register, RegisterSerializable};
 use crate::chip::uint::operations::instruction::UintInstructions;
 use crate::chip::uint::register::U64Register;
-use crate::chip::uint::util::{u64_from_le_field_bytes, u64_to_le_field_bytes};
+use crate::chip::uint::util::u64_to_le_field_bytes;
 use crate::chip::AirParameters;
 use crate::machine::builder::Builder;
 use crate::machine::bytes::builder::BytesBuilder;
@@ -24,141 +23,23 @@ use crate::machine::hash::blake::blake2b::{
     COMPRESS_IV, MIX_LENGTH, MSG_ARRAY_SIZE, NUM_MIX_ROUNDS, SIGMA_PERMUTATIONS, V_INDICES,
     V_LAST_WRITE_AGES,
 };
-use crate::machine::hash::{HashDigest, HashIntConversion, HashInteger};
 use crate::math::prelude::*;
-
-impl<B: Builder> HashInteger<B> for BLAKE2B {
-    type Value = <U64Register as Register>::Value<B::Field>;
-    type IntRegister = U64Register;
-}
-
-impl<B: Builder> HashIntConversion<B> for BLAKE2B {
-    fn int_to_field_value(int: Self::Integer) -> Self::Value {
-        u64_to_le_field_bytes(int)
-    }
-
-    fn field_value_to_int(value: &Self::Value) -> Self::Integer {
-        u64_from_le_field_bytes(value)
-    }
-}
-
-impl<B: Builder> HashDigest<B> for BLAKE2B {
-    type DigestRegister = BLAKE2BDigestRegister;
-}
 
 const DUMMY_INDEX: u64 = i32::MAX as u64;
 const DUMMY_INDEX_2: u64 = (i32::MAX - 1) as u64;
 const DUMMY_TS: u64 = (i32::MAX - 1) as u64;
 const FIRST_COMPRESS_H_READ_TS: u64 = i32::MAX as u64;
 
-pub trait BLAKEAir<B: Builder>: HashIntConversion<B> + HashDigest<B> {
-    fn cycles_end_bits(builder: &mut B) -> (BitRegister, BitRegister, BitRegister, BitRegister);
-
-    fn blake2b(
-        builder: &mut B,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
-        end_bits: &ArrayRegister<BitRegister>,
-        digest_bits: &ArrayRegister<BitRegister>,
-        digest_indices: &ArrayRegister<ElementRegister>,
-        num_messages: &ElementRegister,
-    ) -> Vec<Self::DigestRegister>;
-
-    fn blake2b_const_nums(builder: &mut B) -> BLAKE2BConstNums;
-
-    #[allow(clippy::too_many_arguments)]
-    fn blake2b_const(
-        builder: &mut B,
-        num_rows_element: &ElementRegister,
-        num_messages_element: &ElementRegister,
-        num_real_compresses: usize,
-        num_real_compresses_element: &ElementRegister,
-        num_dummy_compresses: usize,
-        num_total_mix_iterations: usize,
-        num_mix_iterations_last_compress: usize,
-        const_nums: &BLAKE2BConstNums,
-    ) -> BLAKE2BConsts<B>;
-
-    #[allow(clippy::too_many_arguments)]
-    fn blake2b_trace_data(
-        builder: &mut B,
-        const_nums: &BLAKE2BConstNums,
-        consts: &BLAKE2BConsts<B>,
-        num_real_compresses: usize,
-        end_bits: &ArrayRegister<BitRegister>,
-        digest_bits: &ArrayRegister<BitRegister>,
-        num_dummy_compresses: usize,
-        length_last_compress: usize,
-        length_last_compress_element: &ElementRegister,
-    ) -> BLAKE2BTraceData;
-
-    #[allow(clippy::too_many_arguments)]
-    fn blake2b_memory(
-        builder: &mut B,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
-        const_nums: &BLAKE2BConstNums,
-        consts: &BLAKE2BConsts<B>,
-        num_messages_element: &ElementRegister,
-        num_real_compresses: usize,
-        num_real_compresses_element: &ElementRegister,
-        num_dummy_rows: usize,
-    ) -> BLAKE2BMemory;
-
-    fn blake2b_data(
-        builder: &mut B,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
-        end_bits: &ArrayRegister<BitRegister>,
-        digest_bits: &ArrayRegister<BitRegister>,
-        digest_indices: &ArrayRegister<ElementRegister>,
-        num_messages_element: &ElementRegister,
-    ) -> BLAKE2BData<B>;
-
-    fn blake2b_compress_initialize(
-        builder: &mut B,
-        data: &BLAKE2BData<B>,
-    ) -> ([ElementRegister; 4], [Self::IntRegister; 4]);
-
-    fn blake2b_compress(
-        builder: &mut B,
-        v_indices: &[ElementRegister; 4],
-        v_values: &[Self::IntRegister; 4],
-        data: &BLAKE2BData<B>,
-    );
-
-    fn blake2b_compress_finalize(
-        builder: &mut B,
-        state_ptr: &Slice<Self::IntRegister>,
-        data: &BLAKE2BData<B>,
-    );
-
-    fn blake2b_mix(
-        builder: &mut B,
-        v_a: &Self::IntRegister,
-        v_b: &Self::IntRegister,
-        v_c: &Self::IntRegister,
-        v_d: &Self::IntRegister,
-        x: &Self::IntRegister,
-        y: &Self::IntRegister,
-    ) -> (
-        Self::IntRegister,
-        Self::IntRegister,
-        Self::IntRegister,
-        Self::IntRegister,
-    );
-}
-
-impl<L: AirParameters> BLAKEAir<BytesBuilder<L>> for BLAKE2B
-where
-    L::Instruction: UintInstructions,
+impl<L: AirParameters> BLAKE2BAir<L>
+    where
+        L::Instruction: UintInstructions,
 {
     fn cycles_end_bits(
         builder: &mut BytesBuilder<L>,
     ) -> (BitRegister, BitRegister, BitRegister, BitRegister) {
         let cycle_4 = builder.cycle(2);
         let cycle_8 = builder.cycle(3);
-        let loop_3 = builder.api().loop_instr(3);
+        let loop_3 = builder.api.loop_instr(3);
         let cycle_96_end_bit = {
             let cycle_32 = builder.cycle(5);
             builder.mul(loop_3.get_iteration_reg(2), cycle_32.end_bit)
@@ -172,15 +53,15 @@ where
         )
     }
 
-    fn blake2b(
+    pub fn blake2b(
         builder: &mut BytesBuilder<L>,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
+        padded_chunks: &[ArrayRegister<U64Register>],
+        t_values: &ArrayRegister<U64Register>,
         end_bits: &ArrayRegister<BitRegister>,
         digest_bits: &ArrayRegister<BitRegister>,
         digest_indices: &ArrayRegister<ElementRegister>,
         num_messages: &ElementRegister,
-    ) -> Vec<Self::DigestRegister> {
+    ) -> Vec<ArrayRegister<U64Register>> {
         let data = Self::blake2b_data(
             builder,
             padded_chunks,
@@ -195,14 +76,9 @@ where
         let num_digests = data.public.digest_indices.len();
 
         // Create the public registers to input the expected digests.
-        let hash_state_public_tmp: Vec<ArrayRegister<Self::IntRegister>> = (0..num_digests)
-            .map(|_| builder.alloc_array_public::<Self::IntRegister>(4))
-            .collect::<_>();
-
-        let mut hash_state_public: Vec<Self::DigestRegister> = Vec::new();
-        for i in hash_state_public_tmp.iter() {
-            hash_state_public.push(Self::DigestRegister::from_array(*i));
-        }
+        let hash_state_public = (0..num_digests)
+            .map(|_| builder.alloc_array_public(4))
+            .collect::<Vec<_>>();
 
         for (i, h_slice) in data
             .public
@@ -222,11 +98,10 @@ where
         hash_state_public
     }
 
-    fn blake2b_const_nums(builder: &mut BytesBuilder<L>) -> BLAKE2BConstNums {
+    pub fn blake2b_const_nums(builder: &mut BytesBuilder<L>) -> BLAKE2BConstNums {
         BLAKE2BConstNums {
             const_0: builder.constant(&L::Field::from_canonical_u8(0)),
-            const_0_u64: builder
-                .constant(&<Self as HashIntConversion<BytesBuilder<L>>>::int_to_field_value(0u64)),
+            const_0_u64: builder.constant(&u64_to_le_field_bytes(0u64)),
             const_1: builder.constant(&L::Field::from_canonical_u8(1)),
             const_2: builder.constant(&L::Field::from_canonical_u8(2)),
             const_3: builder.constant(&L::Field::from_canonical_u8(3)),
@@ -237,16 +112,16 @@ where
             const_16: builder.constant(&L::Field::from_canonical_u8(16)),
             const_91: builder.constant(&L::Field::from_canonical_u8(91)),
             const_96: builder.constant(&L::Field::from_canonical_u8(96)),
-            const_ffffffffffffffff: builder.constant::<Self::IntRegister>(
-                &<Self as HashIntConversion<BytesBuilder<L>>>::int_to_field_value(
-                    0xFFFFFFFFFFFFFFFF,
-                ),
-            ),
+            const_ffffffffffffffff: builder.constant::<U64Register>(&u64_to_le_field_bytes::<
+                L::Field,
+            >(
+                0xFFFFFFFFFFFFFFFF
+            )),
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn blake2b_const(
+    pub fn blake2b_const(
         builder: &mut BytesBuilder<L>,
         num_rows_element: &ElementRegister,
         num_messages_element: &ElementRegister,
@@ -256,7 +131,7 @@ where
         num_total_mix_iterations: usize,
         num_mix_iterations_last_compress: usize,
         const_nums: &BLAKE2BConstNums,
-    ) -> BLAKE2BConsts<BytesBuilder<L>> {
+    ) -> BLAKE2BConsts<L> {
         assert!(DUMMY_INDEX < L::Field::order());
         let dummy_index: ElementRegister =
             builder.constant(&L::Field::from_canonical_u64(DUMMY_INDEX));
@@ -271,9 +146,7 @@ where
         let first_compress_h_read_ts: ElementRegister =
             builder.constant(&L::Field::from_canonical_u64(FIRST_COMPRESS_H_READ_TS));
 
-        let iv_values = builder.constant_array::<Self::IntRegister>(
-            &IV.map(&<Self as HashIntConversion<BytesBuilder<L>>>::int_to_field_value),
-        );
+        let iv_values = builder.constant_array::<U64Register>(&IV.map(u64_to_le_field_bytes));
         let iv: Slice<crate::chip::uint::register::ByteArrayRegister<8>> = builder.uninit_slice();
         for (i, value) in iv_values.iter().enumerate() {
             builder.store(
@@ -301,9 +174,8 @@ where
             Some(MemorySliceIndex::IndexElement(dummy_index)),
         );
 
-        let compress_iv_values = builder.constant_array::<Self::IntRegister>(
-            &COMPRESS_IV.map(&<Self as HashIntConversion<BytesBuilder<L>>>::int_to_field_value),
-        );
+        let compress_iv_values =
+            builder.constant_array::<U64Register>(&COMPRESS_IV.map(u64_to_le_field_bytes));
         let compress_iv = builder.uninit_slice();
         for (i, value) in compress_iv_values.iter().enumerate() {
             builder.store(
@@ -334,7 +206,7 @@ where
 
         let num_total_mix_iterations_element = builder
             .constant::<ElementRegister>(&L::Field::from_canonical_usize(num_total_mix_iterations));
-        let mut v_indices = MemoryArray::<BytesBuilder<L>, MIX_LENGTH, 4>::new(builder);
+        let mut v_indices = MemoryArray::<L, MIX_LENGTH, 4>::new(builder);
         for (i, indices) in V_INDICES.iter().enumerate() {
             v_indices.store_row(
                 builder,
@@ -349,7 +221,7 @@ where
             "num_total_mix_iterations_element",
         );
 
-        let mut v_last_write_ages = MemoryArray::<BytesBuilder<L>, MIX_LENGTH, 4>::new(builder);
+        let mut v_last_write_ages = MemoryArray::<L, MIX_LENGTH, 4>::new(builder);
         for (i, ages) in V_LAST_WRITE_AGES.iter().enumerate() {
             v_last_write_ages.store_row(
                 builder,
@@ -360,8 +232,7 @@ where
             );
         }
 
-        let mut permutations =
-            MemoryArray::<BytesBuilder<L>, NUM_MIX_ROUNDS, MSG_ARRAY_SIZE>::new(builder);
+        let mut permutations = MemoryArray::<L, NUM_MIX_ROUNDS, MSG_ARRAY_SIZE>::new(builder);
         let num_compresses_element = builder.constant::<ElementRegister>(
             &L::Field::from_canonical_usize(num_real_compresses + num_dummy_compresses),
         );
@@ -402,10 +273,10 @@ where
     // This function will create all the registers/memory slots that will be used for control flow
     // related functions.
     #[allow(clippy::too_many_arguments)]
-    fn blake2b_trace_data(
+    pub fn blake2b_trace_data(
         builder: &mut BytesBuilder<L>,
         const_nums: &BLAKE2BConstNums,
-        consts: &BLAKE2BConsts<BytesBuilder<L>>,
+        consts: &BLAKE2BConsts<L>,
         num_real_compresses: usize,
         end_bits: &ArrayRegister<BitRegister>,
         digest_bits: &ArrayRegister<BitRegister>,
@@ -511,9 +382,9 @@ where
             &mix_id.next(),
             cycle_8_end_bit.not_expr() * mix_id.expr()
                 + cycle_8_end_bit.expr()
-                    * (cycle_96_end_bit.expr() * const_nums.const_0.expr()
-                        + (cycle_96_end_bit.not_expr()
-                            * (mix_id.expr() + const_nums.const_1.expr()))),
+                * (cycle_96_end_bit.expr() * const_nums.const_0.expr()
+                + (cycle_96_end_bit.not_expr()
+                * (mix_id.expr() + const_nums.const_1.expr()))),
         );
 
         let at_end_compress = builder.load(
@@ -549,8 +420,8 @@ where
             &is_compress_initialize.next(),
             (cycle_96_end_bit.expr() * const_nums.const_1.expr())
                 + (cycle_96_end_bit.not_expr()
-                    * (cycle_4_end_bit.expr() * const_nums.const_0.expr()
-                        + cycle_4_end_bit.not_expr() * is_compress_initialize.expr())),
+                * (cycle_4_end_bit.expr() * const_nums.const_0.expr()
+                + cycle_4_end_bit.not_expr() * is_compress_initialize.expr())),
         );
 
         // Flag if we are in the first row of a hash.  In that case, we will need to do an
@@ -669,12 +540,12 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn blake2b_memory(
+    pub fn blake2b_memory(
         builder: &mut BytesBuilder<L>,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
+        padded_chunks: &[ArrayRegister<U64Register>],
+        t_values: &ArrayRegister<U64Register>,
         const_nums: &BLAKE2BConstNums,
-        consts: &BLAKE2BConsts<BytesBuilder<L>>,
+        consts: &BLAKE2BConsts<L>,
         num_messages_element: &ElementRegister,
         num_real_compresses: usize,
         num_real_compresses_element: &ElementRegister,
@@ -700,9 +571,9 @@ where
         let num_dummy_h_reads = builder.public_expression(
             (num_messages_element.expr() * const_nums.const_96.expr() * const_nums.const_10.expr())
                 + (num_non_first_compresses.expr()
-                    * (const_nums.const_4.expr() * const_nums.const_8.expr()
-                        + const_nums.const_2.expr()
-                        + const_nums.const_91.expr() * const_nums.const_10.expr()))
+                * (const_nums.const_4.expr() * const_nums.const_8.expr()
+                + const_nums.const_2.expr()
+                + const_nums.const_91.expr() * const_nums.const_10.expr()))
                 + (num_dummy_rows_element.expr() * const_nums.const_10.expr()),
         );
         builder.store(
@@ -810,15 +681,15 @@ where
         }
     }
 
-    fn blake2b_data(
+    pub fn blake2b_data(
         builder: &mut BytesBuilder<L>,
-        padded_chunks: &[ArrayRegister<Self::IntRegister>],
-        t_values: &ArrayRegister<Self::IntRegister>,
+        padded_chunks: &[ArrayRegister<U64Register>],
+        t_values: &ArrayRegister<U64Register>,
         end_bits: &ArrayRegister<BitRegister>,
         digest_bits: &ArrayRegister<BitRegister>,
         digest_indices: &ArrayRegister<ElementRegister>,
         num_messages_element: &ElementRegister,
-    ) -> BLAKE2BData<BytesBuilder<L>> {
+    ) -> BLAKE2BData<L> {
         assert_eq!(padded_chunks.len(), end_bits.len());
 
         let num_real_compresses = padded_chunks.len();
@@ -902,10 +773,10 @@ where
     }
 
     /// This function will retrieve the v values that will be inputted into the mix function
-    fn blake2b_compress_initialize(
+    pub fn blake2b_compress_initialize(
         builder: &mut BytesBuilder<L>,
-        data: &BLAKE2BData<BytesBuilder<L>>,
-    ) -> ([ElementRegister; 4], [Self::IntRegister; 4]) {
+        data: &BLAKE2BData<L>,
+    ) -> ([ElementRegister; 4], [U64Register; 4]) {
         builder.watch(&data.trace.compress_index, "compress index");
 
         let init_idx_1 = data.trace.compress_index;
@@ -924,8 +795,8 @@ where
         let read_dummy_h_idx = builder.expression(
             data.const_nums.const_1.expr()
                 - (data.trace.at_first_compress.not_expr()
-                    * data.trace.is_compress_initialize.expr()
-                    * data.trace.at_dummy_compress.not_expr()),
+                * data.trace.is_compress_initialize.expr()
+                * data.trace.at_dummy_compress.not_expr()),
         );
 
         let mut h_idx_1 = builder.expression(
@@ -972,8 +843,8 @@ where
         let read_dummy_iv_idx = builder.expression(
             data.const_nums.const_1.expr()
                 - (data.trace.is_compress_initialize.expr()
-                    * data.trace.at_first_compress.expr()
-                    * data.trace.at_dummy_compress.not_expr()),
+                * data.trace.at_first_compress.expr()
+                * data.trace.at_dummy_compress.not_expr()),
         );
         let iv_idx_1 = builder.select(read_dummy_iv_idx, &data.consts.dummy_index, &init_idx_1);
         let iv_idx_2 = builder.select(read_dummy_iv_idx, &data.consts.dummy_index, &init_idx_2);
@@ -1004,7 +875,7 @@ where
         let read_dummy_compress_iv_idx = builder.expression(
             data.const_nums.const_1.expr()
                 - (data.trace.is_compress_initialize.expr()
-                    * data.trace.at_dummy_compress.not_expr()),
+                * data.trace.at_dummy_compress.not_expr()),
         );
         let compress_iv_idx_1 = builder.select(
             read_dummy_compress_iv_idx,
@@ -1204,11 +1075,11 @@ where
     }
 
     /// The processing step of a BLAKE2B round.
-    fn blake2b_compress(
+    pub fn blake2b_compress(
         builder: &mut BytesBuilder<L>,
         v_indices: &[ElementRegister; 4],
-        v_values: &[Self::IntRegister; 4],
-        data: &BLAKE2BData<BytesBuilder<L>>,
+        v_values: &[U64Register; 4],
+        data: &BLAKE2BData<L>,
     ) {
         // Load the permutation values.
         let mut permutation_col: ElementRegister =
@@ -1332,15 +1203,15 @@ where
         }
     }
 
-    fn blake2b_compress_finalize(
+    pub fn blake2b_compress_finalize(
         builder: &mut BytesBuilder<L>,
-        state_ptr: &Slice<Self::IntRegister>,
-        data: &BLAKE2BData<BytesBuilder<L>>,
+        state_ptr: &Slice<U64Register>,
+        data: &BLAKE2BData<L>,
     ) {
         // If we are at the last row of compress, then compute and save the h value.
 
         // First load the previous round's h value.
-        let h_workspace_1 = builder.alloc_array::<Self::IntRegister>(STATE_SIZE);
+        let h_workspace_1 = builder.alloc_array::<U64Register>(STATE_SIZE);
 
         // Read dummy h values if any of the following conditions are true
         // 1) NOT at last row of a compress
@@ -1353,8 +1224,8 @@ where
         let read_dummy_h_idx = builder.expression(
             data.const_nums.const_1.expr()
                 - (data.trace.is_compress_final_row.expr()
-                    * data.trace.at_first_compress.not_expr()
-                    * data.trace.at_dummy_compress.not_expr()),
+                * data.trace.at_first_compress.not_expr()
+                * data.trace.at_dummy_compress.not_expr()),
         );
 
         let h_ts = builder.select(
@@ -1386,7 +1257,7 @@ where
         }
 
         // Xor the first 8 final v values
-        let h_workspace_2 = builder.alloc_array::<Self::IntRegister>(STATE_SIZE);
+        let h_workspace_2 = builder.alloc_array::<U64Register>(STATE_SIZE);
 
         // Read dummy v_final values if NOT at last row of a compress OR in a dummy compress.
         //
@@ -1396,7 +1267,7 @@ where
         let read_dummy_v_final_idx = builder.expression(
             data.const_nums.const_1.expr()
                 - (data.trace.is_compress_final_row.expr()
-                    * data.trace.at_dummy_compress.not_expr()),
+                * data.trace.at_dummy_compress.not_expr()),
         );
         let v_final_ts = builder.select(
             read_dummy_v_final_idx,
@@ -1418,7 +1289,7 @@ where
         }
 
         // Xor the second 8 final v values
-        let h = builder.alloc_array::<Self::IntRegister>(STATE_SIZE);
+        let h = builder.alloc_array::<U64Register>(STATE_SIZE);
 
         // Save h into memory if we are at the final row and it is not the end compress and not in a dummy compress.
         let save_h = builder.expression(
@@ -1480,20 +1351,15 @@ where
         }
     }
 
-    fn blake2b_mix(
+    pub fn blake2b_mix(
         builder: &mut BytesBuilder<L>,
-        v_a: &Self::IntRegister,
-        v_b: &Self::IntRegister,
-        v_c: &Self::IntRegister,
-        v_d: &Self::IntRegister,
-        x: &Self::IntRegister,
-        y: &Self::IntRegister,
-    ) -> (
-        Self::IntRegister,
-        Self::IntRegister,
-        Self::IntRegister,
-        Self::IntRegister,
-    ) {
+        v_a: &U64Register,
+        v_b: &U64Register,
+        v_c: &U64Register,
+        v_d: &U64Register,
+        x: &U64Register,
+        y: &U64Register,
+    ) -> (U64Register, U64Register, U64Register, U64Register) {
         let mut v_a_inter = builder.add(*v_a, *v_b);
         v_a_inter = builder.add(v_a_inter, *x);
 

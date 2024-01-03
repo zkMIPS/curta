@@ -1,39 +1,17 @@
-use super::{BLAKE2B, COMPRESS_IV, STATE_SIZE, WORK_VECTOR_SIZE};
+use super::{COMPRESS_IV, STATE_SIZE, WORK_VECTOR_SIZE};
 use crate::machine::hash::blake::blake2b::SIGMA_PERMUTATIONS;
-use crate::machine::hash::HashPureInteger;
 
-impl HashPureInteger for BLAKE2B {
-    type Integer = u64;
-}
+pub struct BLAKE2BPure;
 
-pub trait BLAKE2BPure: HashPureInteger {
-    fn compress(
+impl BLAKE2BPure {
+    pub fn compress(
         msg_chunk: &[u8],
-        state: &mut [Self::Integer; STATE_SIZE],
+        state: &mut [u64; STATE_SIZE],
         bytes_compressed: u64,
         last_chunk: bool,
-    ) -> [Self::Integer; STATE_SIZE];
-
-    fn mix(
-        v: &mut [Self::Integer; WORK_VECTOR_SIZE],
-        a: usize,
-        b: usize,
-        c: usize,
-        d: usize,
-        x: Self::Integer,
-        y: Self::Integer,
-    );
-}
-
-impl BLAKE2BPure for BLAKE2B {
-    fn compress(
-        msg_chunk: &[u8],
-        state: &mut [Self::Integer; STATE_SIZE],
-        bytes_compressed: u64,
-        last_chunk: bool,
-    ) -> [Self::Integer; STATE_SIZE] {
+    ) -> [u64; STATE_SIZE] {
         // Set up the work vector V
-        let mut v: [Self::Integer; WORK_VECTOR_SIZE] = [0; WORK_VECTOR_SIZE];
+        let mut v: [u64; WORK_VECTOR_SIZE] = [0; WORK_VECTOR_SIZE];
 
         v[..8].copy_from_slice(&state[..STATE_SIZE]);
         v[8..16].copy_from_slice(&COMPRESS_IV);
@@ -45,7 +23,7 @@ impl BLAKE2BPure for BLAKE2B {
 
         let msg_u64_chunks = msg_chunk
             .chunks_exact(8)
-            .map(|x| Self::Integer::from_le_bytes(x.try_into().unwrap()))
+            .map(|x| u64::from_le_bytes(x.try_into().unwrap()))
             .collect::<Vec<_>>();
 
         for s in SIGMA_PERMUTATIONS.iter() {
@@ -136,13 +114,13 @@ impl BLAKE2BPure for BLAKE2B {
     }
 
     fn mix(
-        v: &mut [Self::Integer; WORK_VECTOR_SIZE],
+        v: &mut [u64; WORK_VECTOR_SIZE],
         a: usize,
         b: usize,
         c: usize,
         d: usize,
-        x: Self::Integer,
-        y: Self::Integer,
+        x: u64,
+        y: u64,
     ) {
         v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
         v[d] = (v[d] ^ v[a]).rotate_right(32);

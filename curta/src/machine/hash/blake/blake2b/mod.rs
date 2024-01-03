@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 pub mod air;
 pub mod builder;
 pub mod data;
@@ -7,8 +5,9 @@ pub mod pure;
 pub mod register;
 pub mod utils;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BLAKE2B;
+pub struct BLAKE2BAir<L> {
+    _marker: core::marker::PhantomData<L>,
+}
 
 const NUM_MIX_ROUNDS: usize = 12;
 const MIX_LENGTH: usize = 8;
