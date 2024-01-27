@@ -824,7 +824,7 @@ checksum = "4503fa043bf02cee09a9582e9554b4c6403b2ef55e4612e96561d294419429f8"
 [[package]]
 name = "plonky2"
 version = "0.1.4"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=2d36559d#2d36559dad7adaff46631f31c7e6b24b80096eee"
+source = "git+https://github.com/mir-protocol/plonky2.git#36e62a134dccc2e2fe17452a41a84d467965640a"
 dependencies = [
  "ahash",
  "anyhow",
@@ -835,7 +835,7 @@ dependencies = [
  "log",
  "num",
  "plonky2_field",
- "plonky2_maybe_rayon 0.1.1 (git+https://github.com/mir-protocol/plonky2.git?rev=2d36559d)",
+ "plonky2_maybe_rayon 0.1.1 (git+https://github.com/mir-protocol/plonky2.git)",
  "plonky2_util",
  "rand",
  "rand_chacha",
@@ -843,12 +843,13 @@ dependencies = [
  "serde_json",
  "static_assertions",
  "unroll",
+ "web-time",
 ]
 
 [[package]]
 name = "plonky2_field"
 version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=2d36559d#2d36559dad7adaff46631f31c7e6b24b80096eee"
+source = "git+https://github.com/mir-protocol/plonky2.git#36e62a134dccc2e2fe17452a41a84d467965640a"
 dependencies = [
  "anyhow",
  "itertools 0.11.0",
@@ -872,7 +873,7 @@ dependencies = [
 [[package]]
 name = "plonky2_maybe_rayon"
 version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=2d36559d#2d36559dad7adaff46631f31c7e6b24b80096eee"
+source = "git+https://github.com/mir-protocol/plonky2.git#36e62a134dccc2e2fe17452a41a84d467965640a"
 dependencies = [
  "rayon",
 ]
@@ -880,7 +881,7 @@ dependencies = [
 [[package]]
 name = "plonky2_util"
 version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=2d36559d#2d36559dad7adaff46631f31c7e6b24b80096eee"
+source = "git+https://github.com/mir-protocol/plonky2.git#36e62a134dccc2e2fe17452a41a84d467965640a"
 
 [[package]]
 name = "plotters"
@@ -1436,6 +1437,16 @@ name = "web-sys"
 version = "0.3.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b85cbef8c220a6abc02aefd892dfc0fc23afb1c6a426316ec33253a3877249b"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ee269d72cc29bf77a2c4bc689cc750fb39f5cbd493d2205bbb3f5c7779cf7b0"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
