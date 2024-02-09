@@ -230,9 +230,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce420fe07aecd3e67c5f910618fe65e94158f6dcc0adf44e00d69ce2bdfe0fd0"
+checksum = "53fe5e26ff1b7aef8bca9c6080520cfb8d9333c7568e1829cef191a9723e5504"
 dependencies = [
  "libc",
 ]
@@ -326,7 +326,7 @@ dependencies = [
  "log",
  "num",
  "plonky2",
- "plonky2_maybe_rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "plonky2_maybe_rayon",
  "pprof",
  "rand",
  "seq-macro",
@@ -336,9 +336,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "4.1.1"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e89b8c6a2e4b1f45971ad09761aafb85514a84744b67a95e32c3cc1352d1f65c"
+checksum = "f711ade317dd348950a9910f81c5947e3d8907ebd2b83f76203ff1807e6a2bc2"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -352,9 +352,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek-derive"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83fdaf97f4804dcebfa5862639bc9ce4121e82140bec2a987ac5140294865b5b"
+checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -413,9 +413,9 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
 name = "fiat-crypto"
-version = "0.2.2"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a481586acf778f1b1455424c343f71124b048ffa5f4fc3f8f6ae9dc432dcb3c7"
+checksum = "e825f6987101665dea6ec934c09ec6d721de7bc1bf92248e1d5810c8cd636b77"
 
 [[package]]
 name = "findshlibs"
@@ -817,14 +817,14 @@ dependencies = [
 
 [[package]]
 name = "platforms"
-version = "3.1.2"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4503fa043bf02cee09a9582e9554b4c6403b2ef55e4612e96561d294419429f8"
+checksum = "626dec3cac7cc0e1577a2ec3fc496277ec2baa084bebad95bb6fdbfae235f84c"
 
 [[package]]
 name = "plonky2"
 version = "0.1.4"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=f46cf4ef680ddfd4941691a7d37e5a2568a89cf7#f46cf4ef680ddfd4941691a7d37e5a2568a89cf7"
+source = "git+https://github.com/zkMIPS/plonky2?branch=zkm_dev#215c727d1d185892422b415f2723e358154ea924"
 dependencies = [
  "ahash",
  "anyhow",
@@ -835,7 +835,7 @@ dependencies = [
  "log",
  "num",
  "plonky2_field",
- "plonky2_maybe_rayon 0.1.1 (git+https://github.com/mir-protocol/plonky2.git?rev=f46cf4ef680ddfd4941691a7d37e5a2568a89cf7)",
+ "plonky2_maybe_rayon",
  "plonky2_util",
  "rand",
  "rand_chacha",
@@ -848,7 +848,7 @@ dependencies = [
 [[package]]
 name = "plonky2_field"
 version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=f46cf4ef680ddfd4941691a7d37e5a2568a89cf7#f46cf4ef680ddfd4941691a7d37e5a2568a89cf7"
+source = "git+https://github.com/zkMIPS/plonky2?branch=zkm_dev#215c727d1d185892422b415f2723e358154ea924"
 dependencies = [
  "anyhow",
  "itertools 0.11.0",
@@ -863,16 +863,7 @@ dependencies = [
 [[package]]
 name = "plonky2_maybe_rayon"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "194db0cbdd974e92d897cd92b74adb3968dc1b967315eb280357c49a7637994e"
-dependencies = [
- "rayon",
-]
-
-[[package]]
-name = "plonky2_maybe_rayon"
-version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=f46cf4ef680ddfd4941691a7d37e5a2568a89cf7#f46cf4ef680ddfd4941691a7d37e5a2568a89cf7"
+source = "git+https://github.com/zkMIPS/plonky2?branch=zkm_dev#215c727d1d185892422b415f2723e358154ea924"
 dependencies = [
  "rayon",
 ]
@@ -880,7 +871,7 @@ dependencies = [
 [[package]]
 name = "plonky2_util"
 version = "0.1.1"
-source = "git+https://github.com/mir-protocol/plonky2.git?rev=f46cf4ef680ddfd4941691a7d37e5a2568a89cf7#f46cf4ef680ddfd4941691a7d37e5a2568a89cf7"
+source = "git+https://github.com/zkMIPS/plonky2?branch=zkm_dev#215c727d1d185892422b415f2723e358154ea924"
 
 [[package]]
 name = "plotters"
@@ -1129,9 +1120,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "semver"
-version = "1.0.20"
+version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "836fa6a3e1e547f9a2c4040802ec865b5d85f4014efe00555d7090a3dcaa1090"
+checksum = "b97ed7a9823b74f99c7742f5336af7be5ecd3eeafcb1507d1fa93347b1d589b0"
 
 [[package]]
 name = "seq-macro"
